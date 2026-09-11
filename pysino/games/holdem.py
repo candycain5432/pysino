@@ -8,7 +8,6 @@ pot odds and a personality to decide what to do.
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Sequence, Tuple

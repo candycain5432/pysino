@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence
 
 import pygame
 

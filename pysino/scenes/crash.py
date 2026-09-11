@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import pygame
 
 from .. import config
-from ..core import anim, render, theme, ui
+from ..core import render, theme, ui
 from ..games import crash as rules
-from .base import BetControls, GameScene, draw_result_banner
+from .base import BetControls, GameScene
 
 GRAPH = pygame.Rect(330, 120, 610, 380)
 #: Seconds of curve kept on screen before the view starts scrolling.

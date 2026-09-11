@@ -7,8 +7,7 @@ straight back, so the stack in the HUD is always the truth.
 
 from __future__ import annotations
 
-import math
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import pygame
 
@@ -47,6 +46,9 @@ class HoldemScene(GameScene):
         self._tracked_committed = 0
         self._think_timer = 0.0
         self._result_timer = 0.0
+        #: Guards the pay-out so a finished hand is booked exactly once, no
+        #: matter whether the player or a bot made the closing action.
+        self._hand_booked = True
         self._raise_amount = BIG_BLIND * 2
         self._seat_positions = self._build_seats()
         self._build_widgets()
@@ -105,10 +107,9 @@ class HoldemScene(GameScene):
         self._start_hand()
 
     def on_exit(self) -> None:
-        # Any chips still in front of the player go back to the bank.
+        # Leaving mid-hand forfeits whatever is already in the pot, which is
+        # exactly what standing up from a live table means.
         self._sync_commitment()
-        if self.human.chips > 0 and not self._hand_live:
-            pass
         super().on_exit()
 
     @property
@@ -133,8 +134,8 @@ class HoldemScene(GameScene):
             return
 
         # Re-seat the player with their whole (capped) bankroll each hand.
+        # This is a mirror of the bank, not a second pot of chips.
         self.human.chips = min(self.bank.chips, MAX_BUY_IN)
-        self._table_reserved = self.human.chips
         for bot in self.players[1:]:
             if bot.chips < BIG_BLIND:
                 bot.chips = BOT_STACK
@@ -142,6 +143,7 @@ class HoldemScene(GameScene):
         self.flight.reset()
         self.last_result_text = ""
         self.game.start_hand()
+        self._hand_booked = False
         self._sync_commitment()
         self.audio.play("deal")
         self._think_timer = 0.8
@@ -150,6 +152,7 @@ class HoldemScene(GameScene):
         result = self.game.result
         if result is None:
             return
+        self._hand_booked = True
         self._sync_commitment()
         staked = self.human.committed
         won = self.human.won_last
@@ -171,13 +174,9 @@ class HoldemScene(GameScene):
         elif self.human in result.winners:
             self.last_result_text = "Everyone folded"
 
-        # Whatever is left in front of the player returns to the bank.
-        leftover = self.human.chips - won
-        reserved_unspent = max(0, self._table_reserved - staked)
-        refund = min(leftover, reserved_unspent)
-        if refund > 0:
-            self.bank.chips += refund
-        self.human.chips = 0
+        # No refund is due here: the bank was only ever debited for chips the
+        # player actually committed, and ``human.chips`` is a display mirror
+        # that gets re-seated from the bank at the start of the next hand.
         self._result_timer = 3.2
         self.rng.next_round()
 
@@ -230,7 +229,7 @@ class HoldemScene(GameScene):
         self._sync_flight()
         self.flight.update(dt)
 
-        if self._hand_live:
+        if not self.game.is_hand_over:
             current = self.game.current_player
             if current is not None and not current.is_human:
                 self._think_timer -= dt
@@ -238,10 +237,14 @@ class HoldemScene(GameScene):
                     self.game.play_ai_turn()
                     self.audio.play("chip")
                     self._think_timer = 0.75
-            if self.game.is_hand_over:
+
+        # Book the result from here rather than inside the branch above: the
+        # closing action is just as often the player's as a bot's.
+        if self.game.is_hand_over:
+            if not self._hand_booked:
                 self._finish_hand()
-        else:
-            self._result_timer = max(0.0, self._result_timer - dt)
+            else:
+                self._result_timer = max(0.0, self._result_timer - dt)
 
         self._refresh_buttons()
 

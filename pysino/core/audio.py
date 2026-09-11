@@ -11,7 +11,7 @@ from __future__ import annotations
 import array
 import math
 import random
-from typing import Callable, Dict, Iterable, List, Optional
+from typing import Callable, Dict, Iterable, Optional
 
 import pygame
 

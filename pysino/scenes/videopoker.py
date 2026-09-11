@@ -7,7 +7,7 @@ from typing import List, Optional
 import pygame
 
 from .. import config
-from ..core import anim, cardrender, render, theme, ui
+from ..core import render, theme, ui
 from ..games import videopoker as rules
 from .base import CardFlight, GameScene, draw_result_banner
 

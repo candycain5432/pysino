@@ -11,7 +11,7 @@ import pygame
 from .. import config
 from ..core import anim, cardrender, render, theme, ui
 from ..games import roulette as rules
-from .base import BetControls, GameScene, draw_result_banner
+from .base import GameScene, draw_result_banner
 
 WHEEL_CENTRE = (212, 374)
 WHEEL_RADIUS = 112

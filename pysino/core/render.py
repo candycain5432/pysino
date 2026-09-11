@@ -8,7 +8,7 @@ gradient every frame is the fastest way to lose sixty frames a second.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Tuple
 
 import pygame
 

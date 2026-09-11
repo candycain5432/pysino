@@ -197,24 +197,70 @@ def test_video_poker_deals_and_draws(app):
     assert scene.game.state is State.COMPLETE
 
 
-def test_holdem_plays_a_hand_without_leaking_chips(app):
-    app.go_to("holdem", instant=True)
-    advance(app, 10)
-    scene = app.scenes.current
-    assert not scene.game.is_hand_over
+def _finish_live_hand(app):
+    """Play whatever hand is in progress to the end, taking the passive line."""
+    from pysino.games.holdem import Action
 
+    scene = app.scenes.current
     guard = 0
     while not scene.game.is_hand_over and guard < 900:
         guard += 1
         if scene._is_human_turn:
             actions = scene.game.legal_actions(scene.human)
-            from pysino.games.holdem import Action
-
             scene._act(Action.CHECK if Action.CHECK in actions else Action.CALL)
         advance(app, 2)
     assert scene.game.is_hand_over
-    advance(app, 30)
+    advance(app, 40)
+
+
+def _play_measured_hand(app):
+    """Deal and play one hand, reading the bank from before the blinds go in.
+
+    The scene posts blinds inside ``_start_hand``, so the balance has to be
+    captured before that or a hand where the player is in the blinds looks
+    like it lost chips twice.
+    """
+    scene = app.scenes.current
+    _finish_live_hand(app)
+    before = app.bank.chips
+    scene._start_hand()
+    advance(app, 6)
+    _finish_live_hand(app)
+    return before, scene.human.committed, scene.human.won_last
+
+
+def test_holdem_plays_a_hand(app):
+    app.go_to("holdem", instant=True)
+    advance(app, 10)
+    assert not app.scenes.current.game.is_hand_over
+    _finish_live_hand(app)
     assert app.bank.chips >= 0
+
+
+def test_holdem_bank_matches_what_was_staked_and_won(app):
+    """The bank must move by exactly (won - staked): no chips minted."""
+    app.go_to("holdem", instant=True)
+    advance(app, 10)
+    before, staked, won = _play_measured_hand(app)
+    assert staked > 0
+    assert app.bank.chips == before - staked + won
+
+
+def test_holdem_chips_are_conserved_over_several_hands(app):
+    app.go_to("holdem", instant=True)
+    advance(app, 10)
+    for _ in range(5):
+        before, staked, won = _play_measured_hand(app)
+        assert app.bank.chips == before - staked + won
+
+
+def test_leaving_holdem_mid_hand_does_not_refund_the_pot(app):
+    app.go_to("holdem", instant=True)
+    advance(app, 20)
+    scene = app.scenes.current
+    during = app.bank.chips
+    scene.on_exit()
+    assert app.bank.chips == during
 
 
 # --------------------------------------------------------- the whole point --

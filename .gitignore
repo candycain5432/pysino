@@ -9,5 +9,5 @@ venv/
 .coverage
 htmlcov/
 *.log
-screenshots/
+/screenshots/
 .DS_Store

@@ -6,7 +6,6 @@ import pygame
 
 from .. import config
 from ..core import render, theme, ui
-from ..core.rng import commitment
 from ..core.scene import Scene
 
 

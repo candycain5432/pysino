@@ -9,7 +9,7 @@ from typing import Callable, List, Optional, Tuple
 import pygame
 
 from .. import config
-from ..core import anim, cardrender, render, theme, ui
+from ..core import cardrender, render, theme, ui
 from ..core.cards import Card
 from ..core.scene import Scene
 

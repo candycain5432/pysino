@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import math
 from functools import lru_cache
-from typing import Tuple
-
 import pygame
 
 from . import theme
