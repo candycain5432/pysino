@@ -8,6 +8,7 @@ absolute coordinates.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import random
 from typing import Callable, Dict, Optional, Tuple
@@ -315,14 +316,39 @@ class App:
                         theme.TEXT_MUTED, anchor="midleft")
 
     # --------------------------------------------------------------- loop --
+    def _frame(self) -> None:
+        """The body of one iteration: poll input, advance, draw."""
+        self.dt = min(self.clock.tick(config.FPS) / 1000.0, 0.05)
+        for event in pygame.event.get():
+            self.handle_event(event)
+        self.update(self.dt)
+        self.draw()
+
     def run(self) -> None:
+        """The desktop main loop: a plain blocking ``while``.
+
+        Do not use this under Pygbag - a browser tab is single-threaded, and a
+        loop that never yields back to the JS event loop hangs the page.  Use
+        :meth:`run_async` there instead; :func:`pysino.__main__.main` picks the
+        right one automatically via :data:`pysino.config.IN_BROWSER`.
+        """
         self.running = True
         while self.running:
-            self.dt = min(self.clock.tick(config.FPS) / 1000.0, 0.05)
-            for event in pygame.event.get():
-                self.handle_event(event)
-            self.update(self.dt)
-            self.draw()
+            self._frame()
+        self.shutdown()
+
+    async def run_async(self) -> None:
+        """The same loop, yielding to the browser's event loop every frame.
+
+        This is what Pygbag's WebAssembly build needs: without the
+        ``await asyncio.sleep(0)`` below, nothing else in the browser (paint,
+        input, the tab's own responsiveness) ever gets a turn, since Python is
+        running on the page's one and only thread.
+        """
+        self.running = True
+        while self.running:
+            self._frame()
+            await asyncio.sleep(0)
         self.shutdown()
 
     def step(self, dt: float = 1 / 60) -> None:
@@ -339,7 +365,15 @@ class App:
         self.bank.fair["server_seed"] = self.rng.server_seed
         self.bank.settings["sfx"] = self.audio.enabled
         self.bank.settings["volume"] = self.audio.volume
-        self.bank.save()
+        try:
+            self.bank.save()
+        except OSError:
+            # Best effort: a browser's virtual filesystem (or any other
+            # environment with no durable disk) means a save can genuinely
+            # fail.  Losing the write is a much smaller problem than crashing
+            # mid-shutdown over it - Bank.load() already falls back cleanly
+            # if a profile never lands.
+            pass
 
     def shutdown(self) -> None:
         scene = self.scenes.current

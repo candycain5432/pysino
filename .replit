@@ -1,0 +1,8 @@
+entrypoint = "run.py"
+run = "python3 run.py"
+modules = ["python-3.11"]
+
+[env]
+# Replit's graphical output pane provides a real (headed) SDL display, so
+# nothing here needs SDL_VIDEODRIVER=dummy the way the test suite does.
+PYGAME_HIDE_SUPPORT_PROMPT = "1"

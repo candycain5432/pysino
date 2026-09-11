@@ -309,3 +309,85 @@ def test_bailout_restakes_a_broke_player(app):
     scene.draw_bailout_prompt(app.canvas)
     scene._bailout()
     assert app.bank.chips == config.BAILOUT_CHIPS
+
+
+# ------------------------------------------------------------ browser port --
+def test_run_async_yields_control_every_frame():
+    """The property Pygbag actually depends on: a browser tab is single
+    threaded, so a loop that never hands control back to the page's own
+    event loop would freeze the tab.  ``await asyncio.sleep(0)`` after every
+    frame is what prevents that - this proves the handoff really happens once
+    per frame rather than once at the very end.
+    """
+    import asyncio
+
+    from pysino.app import App
+
+    async def scenario():
+        application = App(headless=True)
+        turns = []
+
+        async def watchdog(count=15):
+            for _ in range(count):
+                turns.append(application.dt)
+                await asyncio.sleep(0)
+            application.quit()
+
+        await asyncio.gather(application.run_async(), watchdog())
+        pygame.quit()
+        return turns
+
+    turns = asyncio.run(scenario())
+    assert len(turns) == 15, "the game loop starved the watchdog coroutine"
+
+
+def test_run_async_shuts_down_and_saves_on_quit():
+    import asyncio
+
+    from pysino.app import App
+    from pysino.core.bank import Bank
+
+    async def scenario():
+        application = App(headless=True)
+        application.bank.chips = 7_777
+
+        async def quitter():
+            await asyncio.sleep(0)
+            application.quit()
+
+        await asyncio.gather(application.run_async(), quitter())
+        assert application.running is False
+        pygame.quit()
+
+    asyncio.run(scenario())
+    assert Bank.load().chips == 7_777
+
+
+def test_save_dir_falls_back_when_home_is_unavailable(monkeypatch):
+    """A filesystem with no HOME (a browser's virtual FS, some containers)
+    must resolve to *something* rather than raising out of config.save_dir().
+    """
+    from pysino import config
+
+    monkeypatch.delenv("PYSINO_HOME", raising=False)
+
+    def broken_home():
+        raise RuntimeError("could not determine home directory")
+
+    monkeypatch.setattr(config.Path, "home", staticmethod(broken_home))
+    assert config.save_dir() == config.Path(".pysino")
+
+
+def test_app_save_does_not_raise_if_the_disk_write_fails(monkeypatch):
+    """Mirrors what a browser's virtual filesystem can do to Bank.save():
+    fail outright.  The app must not crash its own shutdown over it.
+    """
+    from pysino.app import App
+
+    application = App(headless=True)
+
+    def broken_save(*_args, **_kwargs):
+        raise OSError("read-only filesystem")
+
+    monkeypatch.setattr(application.bank, "save", broken_save)
+    application.save()  # must not raise

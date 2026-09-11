@@ -36,6 +36,72 @@ choose, so nothing reflows or clips.
 
 ---
 
+## Playing it in a browser
+
+Two genuinely different ways to do this, depending on what you want:
+
+### Replit — an actual IDE, zero setup
+
+The straightforward option if you want to open it, hit Run, and play, without
+installing Python locally.
+
+1. [replit.com](https://replit.com) → **Create Repl** → **Import from GitHub**
+   → paste this repo's URL.
+2. Replit detects Python from `requirements.txt` and installs `pygame-ce`
+   automatically.
+3. Hit **Run**. A `.replit` file in the repo root points it at `run.py`; the
+   graphical output pane shows the actual game window and takes mouse and
+   keyboard input directly.
+
+This is real pygame running on a real (if remote) machine, not a
+reimplementation — so it's a straightforward, faithful way to play, just with
+network latency between your clicks and the server, and Replit's usual free-tier
+limits on how long a Repl stays warm.
+
+### Pygbag — compiles to WebAssembly, runs in the page itself
+
+The other option: compile the game to WebAssembly so it runs entirely
+client-side, in any static-hosted page, with no server and no account needed
+once it's built.
+
+```bash
+pip install pygbag
+python -m pygbag .          # builds, serves at localhost:8000, opens it for you
+```
+
+`python -m pygbag . --build` instead leaves a `build/web/` folder with no
+further Python involved — deployable to GitHub Pages, itch.io, or any plain
+static host.
+
+This needs a real, blocking-loop-free main loop, since a browser tab is
+single-threaded: `main.py` at the repo root (the file pygbag looks for by
+default) drives `App.run_async()`, which does `await asyncio.sleep(0)` after
+every single frame to hand control back to the page. The desktop build is
+unaffected — `run.py` and `python -m pysino` still use the plain blocking
+`App.run()`.
+
+**Known rough edges**, worth knowing before you rely on it:
+
+- **Saves may not persist.** The bank tries `/data/.pysino/profile.json`
+  (Pygbag's usual persistent mount) but a browser's virtual filesystem is not
+  guaranteed durable across reloads unless you additionally wire up IndexedDB
+  syncing yourself — beyond what a pure Python change can do. A failed save
+  degrades silently rather than crashing (`App.save()` swallows `OSError`),
+  so worst case is your chips reset on reload, not a broken game.
+- **Fonts fall back to pygame's built-in one.** `pygame.font.match_font()`
+  looks for system fonts like DejaVu Sans, which won't be present in the wasm
+  environment, so text renders in a plainer default face. Cosmetic only.
+- **The first build needs real internet access** to fetch pygbag's bundled
+  CPython-for-wasm runtime and a `pygame-ce` wasm wheel (a few hundred MB,
+  cached locally afterward). I could not verify the actual build completes
+  end-to-end from inside this sandbox — its network policy blocks the domain
+  pygbag downloads from — so this is unverified beyond the parts that don't
+  need that fetch: `run_async` is proven (by test) to yield control back once
+  per frame rather than blocking the whole session, and the desktop build's
+  291 tests all still pass with the loop refactored underneath them.
+
+---
+
 ## The floor
 
 | Game | What it is | The house's cut |
