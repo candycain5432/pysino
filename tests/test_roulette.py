@@ -101,3 +101,29 @@ def test_simulated_house_edge_is_about_2_7_percent():
         staked += result.total_staked
         returned += result.total_returned
     assert 0.94 < returned / staked < 1.01
+
+
+def test_pocket_angles_cover_the_wheel_once():
+    """Every pocket gets its own slice, and they wrap exactly once around."""
+    import math
+
+    angles = sorted(r.pocket_angle(number) for number in range(37))
+    assert len(angles) == 37
+    step = math.tau / 37
+    gaps = [b - a for a, b in zip(angles, angles[1:])]
+    assert all(abs(gap - step) < 1e-9 for gap in gaps)
+    assert 0 < angles[0] < step
+    assert angles[-1] < math.tau
+
+
+def test_pocket_angle_follows_the_wheel():
+    import math
+
+    for number in (0, 17, 26):
+        base = r.pocket_angle(number)
+        assert r.pocket_angle(number, 1.25) == pytest.approx(base + 1.25)
+        assert r.pocket_index(number) == r.WHEEL_ORDER.index(number)
+
+
+def test_first_pocket_is_the_zero():
+    assert r.pocket_index(0) == 0

@@ -9,6 +9,7 @@ being on the wheel but never in a bet's coverage.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Dict, FrozenSet, Iterable, List, Sequence, Tuple
 
@@ -22,6 +23,23 @@ RED_NUMBERS: FrozenSet[int] = frozenset(
     {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
 )
 BLACK_NUMBERS: FrozenSet[int] = frozenset(set(range(1, 37)) - RED_NUMBERS)
+
+
+def pocket_index(number: int) -> int:
+    """Position of ``number`` around the physical wheel."""
+    return WHEEL_ORDER.index(number)
+
+
+def pocket_angle(number: int, wheel_angle: float = 0.0) -> float:
+    """Screen-space angle of a pocket once the wheel has turned.
+
+    The wheel face is drawn with pocket ``i`` occupying ``[i*step, (i+1)*step]``
+    and is then rotated by ``-wheel_angle``, which in screen coordinates (where
+    y grows downward) advances every angle by ``+wheel_angle``.  The ball has to
+    finish exactly here or it will settle on the wrong number.
+    """
+    step = math.tau / len(WHEEL_ORDER)
+    return pocket_index(number) * step + step / 2 + wheel_angle
 
 
 def colour_of(number: int) -> str:

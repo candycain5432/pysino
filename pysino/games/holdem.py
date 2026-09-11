@@ -591,6 +591,11 @@ class HoldemGame:
         return action, amount
 
 
+#: Bots are named separately from their playing style, so a seat can show
+#: both "who" and "how they play".
+BOT_NAMES = ("Marlowe", "Dmitri", "Odessa", "Castellan", "Winnie", "Sable", "Rook")
+
+
 def make_table(
     rng,
     human_stack: int,
@@ -601,10 +606,13 @@ def make_table(
     """Seat a human plus ``bot_count`` bots with distinct personalities."""
     profiles = list(PROFILES)
     rng.shuffle(profiles)
+    names = list(BOT_NAMES)
+    rng.shuffle(names)
     players = [Player(name=human_name, chips=human_stack, seat=0, is_human=True)]
     for index in range(bot_count):
         profile = profiles[index % len(profiles)]
         players.append(
-            Player(name=profile.name, chips=bot_stack, seat=index + 1, profile=profile)
+            Player(name=names[index % len(names)], chips=bot_stack,
+                   seat=index + 1, profile=profile)
         )
     return players
