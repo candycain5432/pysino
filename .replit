@@ -1,5 +1,8 @@
 entrypoint = "run.py"
-run = "python3 run.py"
+# -u: unbuffered stdout, so the startup checkpoints in pysino/__main__.py show
+# up in the Replit console the instant they happen, instead of being batched
+# and only flushed when the process exits (which, for a game loop, is never).
+run = "python3 -u run.py"
 modules = ["python-3.11"]
 
 [env]
